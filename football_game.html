@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0b2418">
+<title>Mini Football</title>
+<style>
+:root{color-scheme:dark;--bg:#071b12;--panel:#102b1e;--lime:#c8ff59;--white:#f4f7ed;--muted:#a9bdaf;--blue:#4c91ff;--red:#ff5d62}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#173c29,var(--bg) 70%);font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:var(--white);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:14px}
+.app{width:min(100%,620px)}header{display:flex;justify-content:space-between;align-items:center;margin:0 2px 12px}.brand{font-weight:900;letter-spacing:.06em;font-size:clamp(20px,5vw,29px)}.brand span{color:var(--lime)}.tag{font-size:11px;letter-spacing:.13em;color:var(--muted);border:1px solid #315542;border-radius:99px;padding:6px 10px}
+.scorebar{display:flex;align-items:center;justify-content:space-between;background:#102b1e;border:1px solid #315542;border-radius:15px;padding:10px 14px;margin-bottom:10px}.team{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800}.dot{width:11px;height:11px;border-radius:50%;display:inline-block}.blue{background:var(--blue)}.red{background:var(--red)}.score{font-size:27px;font-weight:900;letter-spacing:.08em}.time{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pitch-wrap{position:relative;border:2px solid #d9eddd;border-radius:13px;overflow:hidden;box-shadow:0 16px 40px #0005;background:#197342}canvas{display:block;width:100%;height:auto;touch-action:none}.banner{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#06150dbb;text-align:center;padding:20px}.banner.show{display:flex}.banner-card{background:#102b1e;border:1px solid #52765e;border-radius:18px;padding:22px;max-width:300px}.banner-card h2{margin:0 0 8px;font-size:27px}.banner-card p{color:var(--muted);margin:0 0 15px}.btn{border:0;background:var(--lime);color:#14210b;border-radius:11px;padding:12px 17px;font-weight:900;font-size:14px;cursor:pointer}.help{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:12px;margin:10px 3px 12px}.controls{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}.pad{display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(2,42px);gap:5px;justify-content:center}.pad button,.shoot{border:1px solid #3b644b;background:#173b29;color:white;border-radius:11px;font-size:18px;font-weight:800;touch-action:none;user-select:none}.pad button:active,.shoot:active{background:#2a5b3e}.pad .empty{visibility:hidden}.shoot{background:#c8ff59;color:#14210b;border:0;border-radius:50%;width:88px;height:88px;font-size:13px;line-height:1.2;box-shadow:0 6px 0 #6e9826}.shoot strong{display:block;font-size:22px}.bottom{display:flex;gap:8px;margin-top:13px}.bottom .btn{flex:1}.secondary{background:#173b29;color:var(--white);border:1px solid #3b644b}.note{font-size:11px;color:#80998a;text-align:center;margin-top:12px;line-height:1.5}
+@media(min-width:520px){.controls{padding:0 25px}.pad{grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,46px)}.shoot{width:100px;height:100px}}
+</style>
+</head>
+<body>
+<main class="app">
+<header><div class="brand">MINI <span>FOOTBALL</span></div><div class="tag">HTML5 • ARCADE</div></header>
+<section class="scorebar"><div class="team"><i class="dot blue"></i> YOU</div><div style="text-align:center"><div class="score"><span id="youScore">0</span> : <span id="cpuScore">0</span></div><div class="time" id="clock">01:30</div></div><div class="team">CPU <i class="dot red"></i></div></section>
+<div class="pitch-wrap"><canvas id="game" width="420" height="620" aria-label="Football game field"></canvas><div class="banner" id="banner"><div class="banner-card"><h2 id="result">FULL TIME</h2><p id="resultText">Nice match!</p><button class="btn" id="playAgain">PLAY AGAIN ↻</button></div></div></div>
+<div class="help"><span>Move your blue player</span><span>Get close to the ball, then shoot!</span></div>
+<section class="controls"><div class="pad" aria-label="Movement controls"><button class="empty">·</button><button data-dir="up">▲</button><button class="empty">·</button><button data-dir="left">◀</button><button data-dir="down">▼</button><button data-dir="right">▶</button></div><button class="shoot" id="shoot"><strong>⚽</strong>SHOOT</button></section>
+<div class="bottom"><button class="btn secondary" id="pause">Ⅱ PAUSE</button><button class="btn" id="restart">↻ RESTART MATCH</button></div>
+<div class="note">Single-player demo • Works in a modern mobile or desktop browser.<br>Share the HTML file or publish it on a static website to let friends play.</div>
+</main>
+<script>
+(() => {
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const $=id=>document.getElementById(id);
+const W=420,H=620, goalL=164,goalR=256;
+let player={x:210,y:510,r:17},cpu={x:210,y:110,r:17},ball={x:210,y:310,r:9,vx:0,vy:0};
+let you=0,opponent=0,time=90,paused=false,ended=false,last=0,move={up:false,down:false,left:false,right:false};
+function resetPositions(){player.x=210;player.y=510;cpu.x=210;cpu.y=110;ball.x=210;ball.y=310;ball.vx=0;ball.vy=0;}
+function reset(){you=0;opponent=0;time=90;paused=false;ended=false;resetPositions();$('banner').classList.remove('show');$('pause').textContent='Ⅱ PAUSE';updateHud();}
+function updateHud(){$('youScore').textContent=you;$('cpuScore').textContent=opponent;$('clock').textContent=`${String(Math.floor(time/60)).padStart(2,'0')}:${String(Math.floor(time%60)).padStart(2,'0')}`;}
+function circle(x,y,r,color){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#ffffffdd';ctx.stroke();}
+function field(){ctx.fillStyle='#197342';ctx.fillRect(0,0,W,H);for(let i=0;i<10;i++){ctx.fillStyle=i%2?'#ffffff08':'#001b0d0b';ctx.fillRect(12+i*40,0,40,H)}ctx.strokeStyle='#e5f2e8';ctx.lineWidth=3;ctx.strokeRect(12,12,W-24,H-24);ctx.beginPath();ctx.moveTo(12,H/2);ctx.lineTo(W-12,H/2);ctx.stroke();ctx.beginPath();ctx.arc(W/2,H/2,59,0,Math.PI*2);ctx.stroke();circle(W/2,H/2,3,'#e5f2e8');ctx.strokeRect(100,12,220,75);ctx.strokeRect(146,12,128,34);ctx.strokeRect(100,H-87,220,75);ctx.strokeRect(146,H-46,128,34);ctx.fillStyle='#e5f2e8';ctx.fillRect(goalL,0,goalR-goalL,12);ctx.fillRect(goalL,H-12,goalR-goalL,12);}
+function draw(){field();circle(cpu.x,cpu.y,cpu.r,'#ff5d62');circle(player.x,player.y,player.r,'#4c91ff');circle(ball.x,ball.y,ball.r,'#ffffff');ctx.beginPath();ctx.arc(ball.x,ball.y,4,0,Math.PI*2);ctx.fillStyle='#252525';ctx.fill();ctx.fillStyle='#ffffff';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.fillText('CPU',cpu.x,cpu.y-25);ctx.fillText('YOU',player.x,player.y-25);}
+function kick(from,targetY,force){const dx=ball.x-from.x,dy=ball.y-from.y,d=Math.hypot(dx,dy);if(d<48){const tx=210-ball.x,ty=targetY-ball.y,len=Math.hypot(tx,ty)||1;ball.vx=tx/len*force;ball.vy=ty/len*force;}}
+function goal(){if(ball.y<8&&ball.x>goalL&&ball.x<goalR){you++;resetPositions();updateHud();}else if(ball.y>H-8&&ball.x>goalL&&ball.x<goalR){opponent++;resetPositions();updateHud();}}
+function update(dt){if(paused||ended)return;time-=dt;if(time<=0){time=0;ended=true;$('result').textContent=you>opponent?'YOU WIN!':you<opponent?'CPU WINS':'DRAW!';$('resultText').textContent=`Final score ${you} : ${opponent}`;$('banner').classList.add('show');updateHud();return;}
+let dx=(move.right?1:0)-(move.left?1:0),dy=(move.down?1:0)-(move.up?1:0);if(dx||dy){let n=Math.hypot(dx,dy);player.x+=dx/n*190*dt;player.y+=dy/n*190*dt;}player.x=Math.max(31,Math.min(W-31,player.x));player.y=Math.max(H/2+18,Math.min(H-35,player.y));
+let ex=ball.x-cpu.x,ey=ball.y-cpu.y,dist=Math.hypot(ex,ey)||1;cpu.x+=ex/dist*105*dt;cpu.y+=ey/dist*105*dt;cpu.x=Math.max(31,Math.min(W-31,cpu.x));cpu.y=Math.max(35,Math.min(H/2-18,cpu.y));if(dist<ball.r+cpu.r+2&&Math.random()<dt*2.2)kick(cpu, H+10,260);
+ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;ball.vx*=Math.pow(.986,dt*60);ball.vy*=Math.pow(.986,dt*60);if(Math.abs(ball.vx)<4)ball.vx=0;if(Math.abs(ball.vy)<4)ball.vy=0;
+if(ball.x<22){ball.x=22;ball.vx=Math.abs(ball.vx)*.75;}if(ball.x>W-22){ball.x=W-22;ball.vx=-Math.abs(ball.vx)*.75;}if(ball.y<12&&!(ball.x>goalL&&ball.x<goalR)){ball.y=12;ball.vy=Math.abs(ball.vy)*.75;}if(ball.y>H-12&&!(ball.x>goalL&&ball.x<goalR)){ball.y=H-12;ball.vy=-Math.abs(ball.vy)*.75;}goal();updateHud();}
+function loop(now){let dt=Math.min((now-last)/1000||0,0.035);last=now;update(dt);draw();requestAnimationFrame(loop)}
+function shoot(){if(!paused&&!ended)kick(player,15,390);}
+$('shoot').addEventListener('pointerdown',e=>{e.preventDefault();shoot()});document.querySelectorAll('[data-dir]').forEach(b=>{const d=b.dataset.dir;const on=e=>{e.preventDefault();move[d]=true};const off=e=>{e.preventDefault();move[d]=false};b.addEventListener('pointerdown',on);['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,off));});
+const keymap={ArrowUp:'up',w:'up',ArrowDown:'down',s:'down',ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right'};window.addEventListener('keydown',e=>{if(keymap[e.key]){move[keymap[e.key]]=true;e.preventDefault()}if(e.code==='Space'){shoot();e.preventDefault()}if(e.key==='Escape'){$('pause').click()}});window.addEventListener('keyup',e=>{if(keymap[e.key])move[keymap[e.key]]=false});$('pause').onclick=()=>{if(ended)return;paused=!paused;$('pause').textContent=paused?'▶ RESUME':'Ⅱ PAUSE'};$('restart').onclick=reset;$('playAgain').onclick=reset;
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
